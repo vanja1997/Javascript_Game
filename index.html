@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+
+<html>
+
+    <head>
+
+        <meta charset="utf-8" />
+        <!-- <script src="main.js"></script> -->
+        <title>Pause clope</title>
+
+        <style>
+            #zone_chat strong {
+                color: white;
+                background-color: black;
+                padding: 2px;
+            }
+        </style>    
+        
+    </head>
+
+    <body>
+        <div style="height:475px"></div>
+        <script src="/socket.io/socket.io.js"></script>
+        <script src="http://code.jquery.com/jquery-1.10.1.min.js"></script>
+        <section id="zone_chat"></section>
+        <button type="button" onclick="ready('red');">Je suis prêt(e)!</button><br>
+        <center><span id="red" style="display:none;">You are Ready.</span></center>
+        <script>
+
+            var images = ['00.png','01.png','02.png','03.png','04.png','05.png','06.png','07.png','08.png','09.png','10.png','11.png','12.png','13.png','14.png','15.png','16.png','17.png','18.png','19.png','20.png','21.png','22.png','23.png','24.png','25.png','26.png','27.png','28.png','29.png','30.png','31.png','32.png','33.png','34.png','win.png','lose.pngs'];
+
+            //display (1, images[34]);
+            var id;
+            var nReady = 0;
+            var nPlayer = 2;
+            var socket = io.connect('http://localhost:8081');
+            var pseudo = prompt('Quel est votre pseudo ?');
+            var tab = toNPlayeur();
+            var isMyTurn = 0;
+            var endGame = 0;
+            socket.emit('newClient',pseudo);
+            
+            //$('#zone_chat').prepend(tab[0]);
+            //$('#zone_chat').prepend(tab[1]);
+            //$('#zone_chat').prepend('Bonjour ' + pseudo + ', Attente de joueurs...<br>');
+
+            socket.on ('nId', function(compteur) {
+                id = compteur;
+                display(id,images[34]);
+            });
+
+
+            socket.on ('start', function(){
+                display(nPlayer, images[33]);
+                socket.emit ('taff',id);
+                socket.emit ('timer');
+            });
+
+            socket.on ('turn', function(idTurn){
+                isMyTurn = idTurn;
+                if (endGame == 0)
+                    socket.emit('timer');
+                displayTurn(isMyTurn, 430);
+            });
+
+
+
+            socket.on ('wait',function() {
+                var imgSection = factory (0, 0, 200, 400, "rgba(0, 191, 255, 1)");
+                imgSection.id = 'w';
+                imgSection.innerHTML = "<center> <image src = '33.png' style='width: 18%;'></img></center>";  
+            });
+
+
+            socket.on ('taff', function(target){
+                tab[target]++;
+                if (tab[target] > 33)
+                    socket.emit('end', id);
+                else       
+                    displayTarget(images[33-tab[target]], target);         
+            });
+
+            socket.on ('end', function(idWin) {
+                document.documentElement.innerHTML = '';
+                endGame = 1;
+                displayEnd(idWin);
+            });
+
+            function ready(id) {
+                var span = document.getElementById(id);
+                if(span.style.display == "none") {
+                    socket.emit("Ready", pseudo);
+                    document.documentElement.innerHTML = '';
+                    //waitClient (1);
+                }
+            }
+
+            function display (n, image){
+                //for (var i = 0 ; i <= n ; i++){
+                    var imgSection = factory (0, 0, 200, 400, "rgba(0, 191, 255, 1)");
+                    imgSection.id = '3';
+                    imgSection.innerHTML = "<center> <image src = '"+image+"' style='width: 18%;'></img></center>";  
+                //}
+            }
+
+            function displayTarget (image, target){
+                if (target == id){
+                    var imgSection = factory (210*target, 0, 200, 400, "rgba(0, 191, 255, 1)");
+                    imgSection.addEventListener("click", menuClick);
+                }
+                else {
+                    var imgSection = factory (210*target, 0, 200, 400, "rgba(185, 185, 185, 1)");
+                    imgSection.addEventListener("click", menuClick);
+                }
+                imgSection.id = 'target';
+                imgSection.innerHTML = "<center> <image src = '"+image+"' style='width: 18%;'></img></center>";
+            }
+
+            function displayEnd (n){
+                //var menuElements = ["0", "1"];
+                for (var i = 0; i < nPlayer; i++){
+                    if (i == id)
+                        var imgSection = factory (210*i, 0, 200, 400, "rgba(0, 191, 255, 1)");
+                    else
+                        var imgSection = factory (210*i, 0, 200, 400, "rgba(185, 185, 185, 1)");
+                    imgSection.id = 'end';
+                    if (n == i)
+                        imgSection.innerHTML = "<center> <image src = 'win.png' style='width: 100%;'></img></center>";    
+                    else
+                        imgSection.innerHTML = "<center> <image src = 'lose.png' style='width: 100%;'></img></center>";          
+                }  
+            }
+
+            function displayTurn (idx, y){
+                for (var i = 0 ; i < nPlayer ; i++){
+                    if (isMyTurn == i)
+                        var imgSection = factory ((i*210), y, 200, 30, "rgba(0, 191, 255, 1)");
+                    else
+                        var imgSection = factory ((i*210), y, 200, 30, "rgba(185, 185, 185, 1)");
+                    imgSection.id = "turn";
+                }
+            }
+
+            function displayName (name, number){
+                display (id,images[34]);
+                //if (number == id){
+                    var nameSection = factory(number*210, 400, 200, 20, "rgba(185, 185, 185, 1)");
+                    nameSection.id = pseudo;
+                    nameSection.textContent = pseudo;
+                //}
+            }
+
+            function menuClick(event){
+                var index = parseInt(event.target.id.slice(-1));
+                if(isMyTurn == id)
+                    socket.emit ('taff',id);
+            }
+
+            function toNPlayeur(){
+                var forAll = [];
+                for (var i = 0 ; i < nPlayer ; i++){
+                    forAll[i] = 0;
+                }
+                return forAll;
+            }
+
+            function factory(x, y, width, height, color) {
+                console.log("créer bloc", width + "x" + height + "color : " + color);
+                var monBloc = document.createElement("div");
+                document.body.appendChild(monBloc);
+                monBloc.style.top = y + "px";
+                monBloc.style.left = x + "px";
+                monBloc.style.width = width + "px";
+                monBloc.style.height = height + "px";
+                monBloc.style.position = "absolute";
+                monBloc.style.backgroundColor = color;
+                /*//ou
+                monBloc.style.backgroundColor = "rgba(255, 0, 0, 0.5)"; //rouge, vert, bleu, transparence */
+                return monBloc;
+            }
+
+
+        </script>
+
+    </body>
+
+</html>
+
